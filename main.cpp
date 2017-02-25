@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <chrono>
+#include <fcntl.h>
 
 char* const* makeStupidString(const std::vector<std::string> &args)
 {
@@ -46,8 +47,10 @@ while(true)
 	std::vector<std::string> cmds;
 	std::vector<std::vector<std::string> > argu;
 	std::vector<std::string> ioCmds;
-	std::string inFile;
-	std::string outFile;
+	std::string inFile = "";
+	std::string outFile = "";
+	//bool shouldReset = false;
+	//int origFD;
 
 	std::cout << "[cmd]: ";
 
@@ -131,9 +134,6 @@ while(true)
 		}
 		else 
 		{
-			//int destroy;
-			//destroy = pipe(p[0]);
-			//destroy = pipe(p[1]);
 			if(pipe(p[1]) < 0) exit(69); //create new output pipe, as the input pipe from the last command is useless
 			auto pid = fork();
 
@@ -144,36 +144,56 @@ while(true)
 				if(cmdNum==0 && argu.size()>1) 
 				{
 					//first process
-					//std::cerr << "first argu" << std::endl;
+					if(inFile!="")
+					{
+						int fd = open(inFile.c_str(), O_RDONLY, 0);
+						p[0][0] = fd;
+						dup2(p[0][0], STDIN_FILENO);
+						close(fd);
+						//shouldReset = true;
+					}
 					dup2(p[1][1],STDOUT_FILENO); // replace STDOUT with the output write
-					//close(p[1][0]);
 				}
 				else if(cmdNum==0 && (int)argu.size()-1 <1)
 				{
 					//lone argument, no piping needed
+					if(inFile != "")
+					{
+						int fd = open(inFile.c_str(), O_CREAT|O_RDWR,00200|00400);
+						p[0][0] = fd;
+						dup2(p[0][0], STDIN_FILENO);
+						close(fd);
+					}
+					if(outFile != "")
+					{
+						int fd = open(outFile.c_str(), O_CREAT|O_RDWR,00200|00400);
+						p[1][1] = fd;
+						dup2(p[1][1], STDOUT_FILENO);
+						close(fd);
+					}
 				}
+
 				else if(cmdNum == (int)argu.size()-1 && argu.size()>1) 
 				{
 					//last process
-					//std::cerr << "last argu" << std::endl;
-					//close(p[0][1]);
-					//close(p[1][1]);
 					dup2(p[0][0], STDIN_FILENO); //Last process, swap input to be the previous processes output.
+					if(outFile != "")
+					{
+						std::cerr << "Writing to file..." << std::endl;
+						int fd = open(outFile.c_str(), O_CREAT|O_RDWR,00200|00400);
+						p[1][1] = fd;
+						dup2(p[1][1], STDOUT_FILENO);
+						close(fd);
+					}
 				}
 				else
 				{
-					//std::cerr << "mid argu" << std::endl;
 					//middle piped process
-					//close(p[1][0]);
-					//close(p[0][1]);
 					dup2(p[0][0], STDIN_FILENO); //replace STDIN with read end of 1st pipe
 					dup2(p[1][1], STDOUT_FILENO); //replace STDOUT with write of 2nd pipe
 				}
 				close(p[0][1]);
 				close(p[1][1]);
-
-				//close(p[0][0]);
-				//close(p[1][0]);
 				execvp(args[0].c_str(),makeStupidString(args));
 				perror("");
 				exit(69);
@@ -183,13 +203,17 @@ while(true)
 				int status;
 				auto start = std::chrono::steady_clock::now();
 				waitpid(pid, &status, 0);
-				//close(p[0][1]);
 				close(p[1][1]);
-				//close(p[0][0]);
-				//close(p[1][0]);
 				auto end = std::chrono::steady_clock::now();
 				pTime+= std::chrono::duration <double, std::micro>(end-start).count();
-				std::swap(p[0],p[1]);
+				/*
+					 if(shouldReset)
+					 {
+					 p[0][0] = origFD;
+					 shouldReset = false;
+					 }
+					 std::swap(p[0],p[1]);
+					 */
 			}
 		}
 		++cmdNum;
