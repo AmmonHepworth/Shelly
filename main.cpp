@@ -206,6 +206,7 @@ while(true)
 				close(p[1][1]);
 				auto end = std::chrono::steady_clock::now();
 				pTime+= std::chrono::duration <double, std::micro>(end-start).count();
+				std::swap(p[0],p[1]);
 				/*
 					 if(shouldReset)
 					 {
@@ -214,6 +215,7 @@ while(true)
 					 }
 					 std::swap(p[0],p[1]);
 					 */
+
 			}
 		}
 		++cmdNum;
