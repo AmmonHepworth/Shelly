@@ -49,8 +49,6 @@ while(true)
 	std::vector<std::string> ioCmds;
 	std::string inFile = "";
 	std::string outFile = "";
-	//bool shouldReset = false;
-	//int origFD;
 
 	std::cout << "[cmd]: ";
 
@@ -210,15 +208,6 @@ while(true)
 				auto end = std::chrono::steady_clock::now();
 				pTime+= std::chrono::duration <double, std::micro>(end-start).count();
 				std::swap(p[0],p[1]);
-				/*
-					 if(shouldReset)
-					 {
-					 p[0][0] = origFD;
-					 shouldReset = false;
-					 }
-					 std::swap(p[0],p[1]);
-					 */
-
 			}
 		}
 		++cmdNum;
