@@ -54,14 +54,14 @@ while(true)
 
 	std::cout << "[cmd]: ";
 
-
 	getline(std::cin, line);
 
 	std::stringstream ss(line);
 	history.push_back(line);
 	int commandNum=0;
 	do{
-		argu.push_back(std::vector<std::string>());
+		if(ioCmds.size()==0 || (ioCmds.back() != ">" && ioCmds.back() != "<")) 
+			argu.push_back(std::vector<std::string>());
 
 		for(int k=0;ss>>buffer && !isIO(buffer);++k)
 		{
@@ -69,20 +69,24 @@ while(true)
 		}
 
 		++commandNum;
-		if(!ss.eof())
-		{
 			if(buffer== "<")
 			{
+				ioCmds.push_back(buffer);
 				ss >> buffer;
 				inFile = buffer;
+				--commandNum;
 			}
 			if(buffer==">")
 			{
+				ioCmds.push_back(buffer);
 				ss >> buffer;
 				outFile = buffer;
+				--commandNum;
 			}
-			ioCmds.push_back(buffer);
-		}
+			if(buffer == "|")
+			{
+				ioCmds.push_back(buffer);
+			}
 	}while(!ss.eof() );
 
 
@@ -179,7 +183,6 @@ while(true)
 					dup2(p[0][0], STDIN_FILENO); //Last process, swap input to be the previous processes output.
 					if(outFile != "")
 					{
-						std::cerr << "Writing to file..." << std::endl;
 						int fd = open(outFile.c_str(), O_CREAT|O_RDWR,00200|00400);
 						p[1][1] = fd;
 						dup2(p[1][1], STDOUT_FILENO);
